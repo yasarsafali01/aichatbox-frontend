@@ -152,8 +152,7 @@ export default function Chat() {
       return updated
     })
     if (id === activeId) {
-      setMessages([])
-      setActiveId(null)
+      newChat()
     }
   }
 
