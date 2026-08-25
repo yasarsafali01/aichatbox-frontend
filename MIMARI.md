@@ -34,11 +34,13 @@ rag-frontend/
     ├── assets/
     │   └── logo.png          Mersin Üniversitesi logosu
     └── components/
-        ├── Chat.jsx           Uygulamanın tamamı: sohbet state'i, API çağrısı, UI
-        └── Chat.css           Chat.jsx'e özel stiller
+        ├── Chat.jsx           Sohbet state'i, API çağrısı, mesaj akışı UI'ı
+        ├── Chat.css           Chat.jsx'e özel stiller
+        ├── Sidebar.jsx        Geçmiş sohbet listesi (Chat.jsx'ten prop olarak veri alır)
+        └── Sidebar.css        Sidebar.jsx'e özel stiller
 ```
 
-Bilinçli olarak tek bir "Chat" bileşeni etrafında toplanmıştır — sayfa geçişi, routing veya çoklu sohbet geçmişi yoktur (ürün kararı: sade tek oturumluk sohbet ekranı).
+Sayfa geçişi/routing yoktur — tek route, tek `Chat` bileşeni. Geçmiş sohbetler arasında geçiş, routing yerine `Sidebar`'ın `Chat` state'ini prop üzerinden değiştirmesiyle yapılır (bkz. aşağıda "Sohbet Geçmişi").
 
 ## `Chat.jsx` İçindeki Akış
 
@@ -46,11 +48,24 @@ Bilinçli olarak tek bir "Chat" bileşeni etrafında toplanmıştır — sayfa g
 
 | State           | Amaç                                                              |
 |-----------------|--------------------------------------------------------------------|
-| `messages`      | Sohbet geçmişi: `{ role: 'user' \| 'bot', text, error? }` dizisi   |
+| `messages`      | Aktif sohbetin mesajları: `{ role: 'user' \| 'bot', text, error? }` dizisi |
 | `input`         | Textarea'nın anlık değeri                                          |
 | `loading`       | İstek beklenirken `true`; gönder butonunu ve input'u kilitler      |
+| `conversations` | Kayıtlı tüm sohbetler: `{ id, title, messages, updatedAt }` dizisi (localStorage ile senkron) |
+| `activeId`      | Şu an açık olan sohbetin `id`'si; `null` ise henüz kaydedilmemiş yeni sohbet |
+| `sidebarOpen`   | Sadece mobilde (≤768px) sidebar'ın overlay olarak açık/kapalı durumu |
 
 `messages` boşken (`hasStarted === false`) merkezi "hoş geldin" ekranı gösterilir (logo + başlık + örnek sorular). İlk mesaj gönderildiğinde standart, alta sabitlenmiş sohbet akışına geçilir.
+
+### Sohbet Geçmişi (`Sidebar`, localStorage)
+
+Her sohbet `localStorage`'da `meu-bilgi-sistemi-conversations` anahtarı altında bir JSON dizi olarak tutulur — backend'e hiç gönderilmez, sadece tarayıcıda kalır.
+
+- **İlk mesaj gönderildiğinde** (`activeId === null`) yeni bir sohbet kaydı oluşturulur; başlık ilk kullanıcı mesajından türetilir (`makeTitle`, 42 karaktere kırpılır).
+- Bir `useEffect` (`[messages, activeId]` dep'i), `messages` her değiştiğinde aktif sohbetin kaydını günceller ve `localStorage`'a yazar — ayrı bir "kaydet" butonu yoktur, her mesaj otomatik kalıcı hale gelir.
+- `Sidebar`'dan bir geçmiş sohbete tıklamak (`selectConversation`) o kaydın `messages`'ını aktif hale getirir; "Yeni Sohbet" (`newChat`) `activeId`'yi `null`'a döndürüp ekranı temizler (yeni mesaj gelene kadar kayıt oluşmaz).
+- Çöp kutusu ikonuyla silme (`deleteConversation`) kaydı diziden çıkarıp `localStorage`'ı günceller.
+- `localStorage` erişimi başarısız olursa (gizli sekme, kota dolu vb.) `loadConversations`/`saveConversations` sessizce boş diziye düşer — uygulama çökmez, sadece geçmiş kalıcı olmaz.
 
 ### Backend İsteği (`ask` fonksiyonu)
 
@@ -102,4 +117,4 @@ Renk veya marka değişikliği gerektiğinde tek değişiklik noktası burasıd�
 
 - **Yeni bir sayfa/route eklemek** gerekirse `react-router` eklenmeli; şu an hiç routing yoktur.
 - **API anahtarını gizlemek** gerekirse mevcut nginx proxy bloğuna (`/api/rag/`) `proxy_set_header X-API-Key ...;` eklenip `API_KEY` sabitinin istemci kodundan tamamen çıkarılması yeterlidir — proxy zaten var, sadece anahtarı ekleyen taraf değişir (bkz. KURULUM.md → Güvenlik Notu).
-- **Çoklu sohbet / geçmiş** gibi bir ihtiyaç doğarsa `messages` state'i `localStorage`'a taşınıp bir sohbet listesi state'i eklenebilir; şu anki tasarım bilinçli olarak bunu içermiyor.
+- **Sohbet geçmişini sunucuda saklamak** (kullanıcı hesabına bağlı, cihazlar arası senkron) gerekirse `localStorage` yerine bir backend endpoint'i (`GET/POST/DELETE /conversations`) kullanılmalı — şu anki tasarım bilinçli olarak sadece tarayıcı yerelinde tutuyor, kimlik doğrulama/kullanıcı hesabı yok.

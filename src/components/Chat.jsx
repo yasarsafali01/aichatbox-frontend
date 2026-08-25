@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import logo from '../assets/logo.png'
+import Sidebar from './Sidebar'
 import './Chat.css'
 
 // Same-origin path: nginx proxies this to the RAG backend on the same
@@ -12,14 +13,53 @@ const SUGGESTIONS = [
   'Mezuniyet için gereken şartlar nelerdir?',
 ]
 
+const STORAGE_KEY = 'meu-bilgi-sistemi-conversations'
+
+const loadConversations = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+const saveConversations = (list) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+  } catch {
+    /* localStorage kullanılamıyor (gizli sekme vb.) — sessizce yoksay */
+  }
+}
+
+const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+
+const makeTitle = (text) => (text.length > 42 ? `${text.slice(0, 42).trimEnd()}…` : text)
+
 export default function Chat() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [conversations, setConversations] = useState(loadConversations)
+  const [activeId, setActiveId] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
 
   const hasStarted = messages.length > 0
+
+  // Aktif sohbetin mesajlarını, o sohbete ait kayda yansıt ve localStorage'a yaz.
+  useEffect(() => {
+    if (!activeId) return
+    setConversations(prev => {
+      const idx = prev.findIndex(c => c.id === activeId)
+      if (idx === -1) return prev
+      const updated = [...prev]
+      updated[idx] = { ...updated[idx], messages, updatedAt: Date.now() }
+      saveConversations(updated)
+      return updated
+    })
+  }, [messages, activeId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -64,8 +104,21 @@ export default function Chat() {
   const sendMessage = (text) => {
     const trimmed = (text ?? input).trim()
     if (!trimmed || loading) return
+
+    if (!activeId) {
+      const id = makeId()
+      const newConversation = { id, title: makeTitle(trimmed), messages: [], updatedAt: Date.now() }
+      setConversations(prev => {
+        const updated = [newConversation, ...prev]
+        saveConversations(updated)
+        return updated
+      })
+      setActiveId(id)
+    }
+
     pushUser(trimmed)
     setInput('')
+    setSidebarOpen(false)
     ask(trimmed)
   }
 
@@ -79,6 +132,29 @@ export default function Chat() {
   const newChat = () => {
     setMessages([])
     setInput('')
+    setActiveId(null)
+    setSidebarOpen(false)
+  }
+
+  const selectConversation = (id) => {
+    const conv = conversations.find(c => c.id === id)
+    if (!conv) return
+    setActiveId(id)
+    setMessages(conv.messages)
+    setInput('')
+    setSidebarOpen(false)
+  }
+
+  const deleteConversation = (id) => {
+    setConversations(prev => {
+      const updated = prev.filter(c => c.id !== id)
+      saveConversations(updated)
+      return updated
+    })
+    if (id === activeId) {
+      setMessages([])
+      setActiveId(null)
+    }
   }
 
   const composer = (
@@ -108,18 +184,30 @@ export default function Chat() {
   )
 
   return (
-    <div className="chat-app">
+    <div className="app-shell">
+      {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
+      <Sidebar
+        conversations={conversations}
+        activeId={activeId}
+        onSelect={selectConversation}
+        onNew={newChat}
+        onDelete={deleteConversation}
+        open={sidebarOpen}
+      />
+
+      <div className="chat-app">
       <header className="chat-topbar">
+        <button
+          className="chat-menu-btn"
+          onClick={() => setSidebarOpen(prev => !prev)}
+          aria-label="Sohbet geçmişi"
+        >
+          <i className="bi bi-list"></i>
+        </button>
         <span className="chat-topbar-brand">
           <img src={logo} alt="Mersin Üniversitesi" className="chat-brand-logo" />
           Mersin Üniversitesi <span className="chat-brand-accent">Bilgi Sistemi</span>
         </span>
-        {hasStarted && (
-          <button className="chat-newchat-btn" onClick={newChat}>
-            <i className="bi bi-plus-lg"></i>
-            Yeni Sohbet
-          </button>
-        )}
       </header>
 
       <main className="chat-main">
@@ -180,6 +268,7 @@ export default function Chat() {
           </small>
         </footer>
       )}
+      </div>
     </div>
   )
 }
