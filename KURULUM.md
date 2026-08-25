@@ -81,11 +81,14 @@ server {
 
     # Frontend, RAG API'sine bu path üzerinden (aynı origin) istek atar.
     # Böylece tarayıcı için cross-origin istek olmaz, CORS hatası alınmaz.
-    # RAG API bu sunucuda farklı bir portta çalışıyorsa 127.0.0.1:PORT
-    # kısmını gerçek portla değiştirin; başka bir sunucudaysa o sunucunun
-    # adresini yazın (bu durumda backend'in CORS'a izin vermesi gerekir).
-    location /api/rag/ {
-        proxy_pass http://127.0.0.1:8080/rag/;
+    # Sadece /ask ile eşleşir (exact match) — backend'deki /rag/ altında
+    # başka endpoint varsa onlar bu yoldan erişilebilir olmaz, saldırı
+    # yüzeyi minimumda tutulur. RAG API bu sunucuda farklı bir portta
+    # çalışıyorsa 127.0.0.1:PORT kısmını gerçek portla değiştirin; başka
+    # bir sunucudaysa o sunucunun adresini yazın (bu durumda backend'in
+    # CORS'a izin vermesi gerekir).
+    location = /api/rag/ask {
+        proxy_pass http://127.0.0.1:8080/rag/ask;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
