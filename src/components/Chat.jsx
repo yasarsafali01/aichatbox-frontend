@@ -208,6 +208,12 @@ export default function Chat() {
           <img src={logo} alt="Mersin Üniversitesi" className="chat-brand-logo" />
           Mersin Üniversitesi <span className="chat-brand-accent">Bilgi Sistemi</span>
         </span>
+        {hasStarted && (
+          <button className="chat-newchat-btn" onClick={newChat}>
+            <i className="bi bi-plus-lg"></i>
+            Yeni Sohbet
+          </button>
+        )}
       </header>
 
       <main className="chat-main">
