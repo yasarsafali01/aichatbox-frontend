@@ -148,6 +148,7 @@ export default function Chat() {
     setInput('')
     setActiveId(null)
     setSidebarOpen(false)
+    textareaRef.current?.focus()
   }
 
   const selectConversation = (id) => {
