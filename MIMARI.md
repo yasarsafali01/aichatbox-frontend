@@ -4,20 +4,21 @@ Bu doküman, projenin dosya organizasyonunu, veri akışını ve önemli tasarı
 
 ## Genel Bakış
 
-Proje, **saf istemci taraflı (client-side) bir Single Page Application (SPA)**'dır. Kendi backend'i yoktur; tarayıcı doğrudan harici bir RAG API'sine istek atar ve yanıtı ekranda gösterir.
+Proje, **saf istemci taraflı (client-side) bir Single Page Application (SPA)**'dır. Kendi backend'i yoktur. Tarayıcı isteği kendi origin'ine (`/api/rag/ask`) atar; bu path'i nginx sunucu içinde gerçek RAG API'sine yönlendirir (reverse proxy). Bu dolaylı yol bilinçli bir tercih: tarayıcı ile RAG API'si farklı portlarda olduğu için doğrudan çağrı **CORS hatasına** yol açıyordu, nginx araya girince istek tarayıcı açısından aynı origin'e gitmiş oluyor ve CORS devre dışı kalıyor.
 
 ```
-┌─────────────┐        HTTPS/HTTP POST        ┌──────────────────────┐
-│   Tarayıcı   │ ─────────────────────────────▶ │  RAG API              │
-│ (React SPA)  │   POST /rag/ask                │  (Sunucu adresi)      │
-│              │   { "question": "..." }        │  bu reponun dışında   │
-│              │   header: X-API-Key            │                       │
-│              │ ◀───────────────────────────── │                       │
-└─────────────┘   200: düz metin cevap          └──────────────────────┘
+┌─────────────┐   POST /api/rag/ask   ┌──────────────┐   POST /rag/ask   ┌──────────────────────┐
+│   Tarayıcı   │ ─────────────────────▶ │    nginx     │ ─────────────────▶ │  RAG API              │
+│ (React SPA)  │   (aynı origin)        │ (reverse     │   (sunucu içinde)   │  (Sunucu adresi)      │
+│              │   header: X-API-Key    │  proxy)      │   header: X-API-Key │  bu reponun dışında   │
+│              │ ◀───────────────────── │              │ ◀─────────────────  │                       │
+└─────────────┘   200: düz metin cevap  └──────────────┘                     └──────────────────────┘
                    400/500: { "error": "..." } veya düz metin
 ```
 
-Build alındığında (`npm run build`) ortaya sadece statik dosyalar (`dist/`) çıkar; bu dosyalar herhangi bir statik web sunucusuyla (nginx, Apache, vb.) servis edilebilir. Bir Node.js runtime'ına ihtiyaç yoktur.
+`X-API-Key` değeri nginx tarafından eklenmiyor — tarayıcı isteği hâlâ bu header ile gönderiyor, nginx sadece olduğu gibi iletiyor (bkz. KURULUM.md → Güvenlik Notu). Proxy'nin tek amacı CORS'u aşmak, anahtarı gizlemek değil.
+
+Build alındığında (`npm run build`) ortaya sadece statik dosyalar (`dist/`) çıkar; bu dosyalar herhangi bir statik web sunucusuyla (nginx, Apache, vb.) servis edilebilir. Bir Node.js runtime'ına ihtiyaç yoktur — sadece nginx'in `/api/rag/` için bir proxy kuralı tanımlaması gerekir (bkz. KURULUM.md adım 6).
 
 ## Dosya Yapısı
 
@@ -56,7 +57,7 @@ Bilinçli olarak tek bir "Chat" bileşeni etrafında toplanmıştır — sayfa g
 Sabitler dosyanın en üstünde tanımlıdır:
 
 ```js
-const ASK_URL = 'Sunucu adresi'
+const ASK_URL = '/api/rag/ask'   // nginx tarafından backend'e proxy'lenir
 const API_KEY = 'API Anahtarı'
 ```
 
@@ -100,5 +101,5 @@ Renk veya marka değişikliği gerektiğinde tek değişiklik noktası burasıd�
 ## Genişletme Notları
 
 - **Yeni bir sayfa/route eklemek** gerekirse `react-router` eklenmeli; şu an hiç routing yoktur.
-- **API anahtarını gizlemek** gerekirse `ASK_URL`'in bir reverse proxy (nginx `location` bloğu veya küçük bir backend) arkasına alınması, `API_KEY`'in istemci kodundan tamamen çıkarılması gerekir (bkz. README.md → Güvenlik Notu).
+- **API anahtarını gizlemek** gerekirse mevcut nginx proxy bloğuna (`/api/rag/`) `proxy_set_header X-API-Key ...;` eklenip `API_KEY` sabitinin istemci kodundan tamamen çıkarılması yeterlidir — proxy zaten var, sadece anahtarı ekleyen taraf değişir (bkz. KURULUM.md → Güvenlik Notu).
 - **Çoklu sohbet / geçmiş** gibi bir ihtiyaç doğarsa `messages` state'i `localStorage`'a taşınıp bir sohbet listesi state'i eklenebilir; şu anki tasarım bilinçli olarak bunu içermiyor.

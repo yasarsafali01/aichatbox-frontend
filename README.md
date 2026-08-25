@@ -43,4 +43,4 @@ Uzak bir sunucuya uçtan uca kurulum adımları için: **[KURULUM.md](KURULUM.md
 
 ## Güvenlik Notu
 
-Bu uygulama tamamen istemci taraflı (client-side) çalışır ve RAG API'sine doğrudan tarayıcıdan istek atar. Bu nedenle `X-API-Key` değeri tarayıcının Network sekmesinde ve derlenmiş JS dosyasında görünür durumdadır. Anahtarın tamamen gizlenmesi isteniyorsa bir reverse proxy (nginx veya küçük bir backend) katmanı eklenmelidir — bu repo şu an bunu içermez, bilinçli bir tercih olarak basitlik seçilmiştir.
+Bu uygulama tamamen istemci taraflı (client-side) çalışır. Production kurulumunda nginx, `/api/rag/ask` isteğini backend'e proxy'ler (bkz. KURULUM.md adım 6) — ama bu sadece CORS'u aşmak içindir, anahtarı gizlemez: `X-API-Key` değeri hâlâ tarayıcıdan gönderilir ve hem Network sekmesinde hem derlenmiş JS dosyasında görünür durumdadır. Anahtarın tamamen gizlenmesi isteniyorsa proxy bloğuna `proxy_set_header X-API-Key ...;` eklenip anahtar istemci kodundan çıkarılmalıdır — bu repo şu an bunu yapmıyor, bilinçli bir tercih olarak basitlik seçilmiştir.

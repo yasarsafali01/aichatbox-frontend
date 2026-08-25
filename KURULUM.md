@@ -79,6 +79,17 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    # Frontend, RAG API'sine bu path üzerinden (aynı origin) istek atar.
+    # Böylece tarayıcı için cross-origin istek olmaz, CORS hatası alınmaz.
+    # RAG API bu sunucuda farklı bir portta çalışıyorsa 127.0.0.1:PORT
+    # kısmını gerçek portla değiştirin; başka bir sunucudaysa o sunucunun
+    # adresini yazın (bu durumda backend'in CORS'a izin vermesi gerekir).
+    location /api/rag/ {
+        proxy_pass http://127.0.0.1:8080/rag/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
 }
@@ -134,4 +145,6 @@ npm run build
 
 ## Güvenlik Notu
 
-RAG API adresi (Sunucu adresi) ve `X-API-Key` değeri (API Anahtarı) doğrudan frontend kaynak kodunda (`src/components/Chat.jsx`) tanımlıdır ve derlenmiş JS dosyasında düz metin olarak bulunur. Bu, bilinçli olarak seçilmiş basit bir mimaridir — anahtar tarayıcıdan (DevTools → Network) görülebilir durumdadır. Bunu kabul edilemez buluyorsanız, nginx config'ine bir `location /api/rag/ask { proxy_pass ...; proxy_set_header X-API-Key ...; }` bloğu ekleyip anahtarı sadece nginx tarafında tutan bir ara katman kurulabilir; bu repo şu an bunu içermez.
+6. adımdaki `/api/rag/` proxy bloğu **sadece CORS hatasını önlemek** için var — istek tarayıcıdan aynı origin'e (kendi adresine) gidip nginx tarafından sunucu içinde backend'e yönlendiriliyor. Bu, `X-API-Key` değerini gizlemez: istek hâlâ tarayıcıdan `X-API-Key` header'ıyla gönderiliyor ve nginx bunu olduğu gibi backend'e iletiyor. Anahtar hem derlenmiş JS dosyasında (`src/components/Chat.jsx` içinde `API_KEY` sabiti) hem de tarayıcının DevTools → Network sekmesinde düz metin olarak görülebilir durumda.
+
+Anahtarı gerçekten gizlemek isterseniz, nginx'in proxy bloğuna `proxy_set_header X-API-Key <anahtar>;` ekleyip anahtarı frontend kaynak kodundan tamamen çıkarmanız gerekir — bu durumda anahtar sadece nginx config dosyasında (sunucu tarafında) durur, hiçbir zaman tarayıcıya gitmez. Bu repo şu an bunu yapmıyor; bilinçli olarak basitlik tercih edilmiştir.

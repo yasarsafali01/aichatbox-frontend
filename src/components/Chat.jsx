@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import logo from '../assets/logo.png'
 import './Chat.css'
 
-const ASK_URL = 'http://10.2.2.121:8080/rag/ask'
+// Same-origin path: nginx proxies this to the RAG backend on the same
+// server, so the browser never makes a cross-origin request (avoids CORS).
+const ASK_URL = '/api/rag/ask'
 const API_KEY = 'meu-ai-chatbox'
 
 const SUGGESTIONS = [
