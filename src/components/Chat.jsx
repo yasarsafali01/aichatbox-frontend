@@ -253,9 +253,10 @@ export default function Chat() {
                   <img src={logo} alt="" />
                 </div>
                 <div className="chat-msg-bubble chat-typing">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                  <span className="chat-typing-text">Düşünüyor</span>
+                  <span className="chat-typing-dot"></span>
+                  <span className="chat-typing-dot"></span>
+                  <span className="chat-typing-dot"></span>
                 </div>
               </div>
             )}
