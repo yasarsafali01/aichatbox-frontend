@@ -45,6 +45,7 @@ export default function Chat() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
+  const abortRef = useRef(null)
 
   const hasStarted = messages.length > 0
 
@@ -65,6 +66,13 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  // Boş (hoş geldin) ekrana dönüldüğünde imleci otomatik input'a odakla.
+  useEffect(() => {
+    if (!hasStarted) {
+      textareaRef.current?.focus()
+    }
+  }, [hasStarted])
+
   useEffect(() => {
     const el = textareaRef.current
     if (!el) return
@@ -77,12 +85,16 @@ export default function Chat() {
   const pushError = (text) => setMessages(prev => [...prev, { role: 'bot', text, error: true }])
 
   const ask = async (text) => {
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setLoading(true)
     try {
       const res = await fetch(ASK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
         body: JSON.stringify({ question: text }),
+        signal: controller.signal,
       })
       const raw = await res.text()
 
@@ -94,7 +106,8 @@ export default function Chat() {
       let data = null
       try { data = JSON.parse(raw) } catch { /* not JSON */ }
       pushError(data?.error || raw || `Sunucu hatası (HTTP ${res.status}).`)
-    } catch {
+    } catch (err) {
+      if (err.name === 'AbortError') return // sohbet terk edildi, sessizce çık
       pushError('Bağlantı hatası. Backend çalışıyor mu?')
     } finally {
       setLoading(false)
@@ -130,6 +143,7 @@ export default function Chat() {
   }
 
   const newChat = () => {
+    abortRef.current?.abort()
     setMessages([])
     setInput('')
     setActiveId(null)
@@ -139,6 +153,7 @@ export default function Chat() {
   const selectConversation = (id) => {
     const conv = conversations.find(c => c.id === id)
     if (!conv) return
+    abortRef.current?.abort()
     setActiveId(id)
     setMessages(conv.messages)
     setInput('')
