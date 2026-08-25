@@ -1,0 +1,26 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --navy-dark: #14213d;
+  --navy: #1b2f52;
+  --navy-light: #24406e;
+  --accent: #f3701f;
+  --text-muted: #6c757d;
+  --chat-bg: #ffffff;
+  --chat-border: #e6e9f2;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--chat-bg);
+  color: #212529;
+  overflow: hidden;
+}
