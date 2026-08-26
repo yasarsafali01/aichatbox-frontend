@@ -79,6 +79,7 @@ export default function Chat() {
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID)
   const [listening, setListening] = useState(false)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [copiedIndex, setCopiedIndex] = useState(null)
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
   const abortRef = useRef(null)
@@ -163,12 +164,28 @@ export default function Chat() {
   }
 
   const pushUser = (text) => setMessages(prev => [...prev, { role: 'user', text }])
-  const pushBot = (text) => setMessages(prev => [...prev, { role: 'bot', text }])
+  const pushBot = (text, duration) => setMessages(prev => [...prev, { role: 'bot', text, duration }])
   const pushError = (text) => setMessages(prev => [...prev, { role: 'bot', text, error: true }])
+
+  const setMessageFeedback = (index, value) => {
+    setMessages(prev => prev.map((m, i) => (
+      i === index ? { ...m, feedback: m.feedback === value ? null : value } : m
+    )))
+  }
+
+  const copyMessage = (text, index) => {
+    navigator.clipboard?.writeText(text)
+      .then(() => {
+        setCopiedIndex(index)
+        setTimeout(() => setCopiedIndex(cur => (cur === index ? null : cur)), 1500)
+      })
+      .catch(() => {})
+  }
 
   const ask = async (text) => {
     const controller = new AbortController()
     abortRef.current = controller
+    const startedAt = Date.now()
 
     setLoading(true)
     try {
@@ -179,7 +196,8 @@ export default function Chat() {
         signal: controller.signal,
       })
       if (res.ok) {
-        pushBot(await res.text())
+        const reply = await res.text()
+        pushBot(reply, (Date.now() - startedAt) / 1000)
         return
       }
 
@@ -407,8 +425,41 @@ export default function Chat() {
                     <img src={logo} alt="" />
                   </div>
                 )}
-                <div className={`chat-msg-bubble ${msg.error ? 'chat-msg-error' : ''}`}>
-                  {msg.text}
+                <div className="chat-msg-col">
+                  <div className={`chat-msg-bubble ${msg.error ? 'chat-msg-error' : ''}`}>
+                    {msg.text}
+                  </div>
+                  {msg.role === 'bot' && !msg.error && (
+                    <div className="chat-msg-actions">
+                      {msg.duration != null && (
+                        <span className="chat-msg-duration">{msg.duration.toFixed(1)} sn</span>
+                      )}
+                      <button
+                        type="button"
+                        className="chat-msg-action-btn"
+                        onClick={() => copyMessage(msg.text, i)}
+                        aria-label="Kopyala"
+                      >
+                        <i className={`bi ${copiedIndex === i ? 'bi-check-lg' : 'bi-clipboard'}`}></i>
+                      </button>
+                      <button
+                        type="button"
+                        className={`chat-msg-action-btn ${msg.feedback === 'like' ? 'chat-msg-action-active' : ''}`}
+                        onClick={() => setMessageFeedback(i, 'like')}
+                        aria-label="Beğendim"
+                      >
+                        <i className="bi bi-hand-thumbs-up"></i>
+                      </button>
+                      <button
+                        type="button"
+                        className={`chat-msg-action-btn ${msg.feedback === 'dislike' ? 'chat-msg-action-active' : ''}`}
+                        onClick={() => setMessageFeedback(i, 'dislike')}
+                        aria-label="Beğenmedim"
+                      >
+                        <i className="bi bi-hand-thumbs-down"></i>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
