@@ -263,7 +263,10 @@ export default function Chat() {
             aria-haspopup="listbox"
             aria-expanded={modelMenuOpen}
           >
-            {currentModel.label}
+            <span className="chat-model-trigger-text">
+              <span className="chat-model-trigger-label">{currentModel.label}</span>
+              <span className="chat-model-trigger-desc">{currentModel.description}</span>
+            </span>
             <i className={`bi bi-chevron-down chat-model-chevron ${modelMenuOpen ? 'chat-model-chevron-open' : ''}`}></i>
           </button>
 

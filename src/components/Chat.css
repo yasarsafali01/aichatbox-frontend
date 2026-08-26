@@ -326,9 +326,6 @@
   gap: 6px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--navy-dark);
-  font-size: 0.82rem;
-  font-weight: 600;
   font-family: inherit;
   padding: 6px 10px;
   border-radius: 8px;
@@ -338,6 +335,25 @@
 
 .chat-model-trigger:hover {
   background: #f1f2f6;
+}
+
+.chat-model-trigger-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+}
+
+.chat-model-trigger-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--navy-dark);
+}
+
+.chat-model-trigger-desc {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .chat-model-picker:has(.chat-model-menu) .chat-model-trigger {
