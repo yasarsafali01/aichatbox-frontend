@@ -80,14 +80,26 @@ export default function Chat() {
   const [listening, setListening] = useState(false)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
   const abortRef = useRef(null)
   const recognitionRef = useRef(null)
   const modelMenuRef = useRef(null)
+  const askStartRef = useRef(null)
 
   const hasStarted = messages.length > 0
   const currentModel = ALL_MODELS.find(m => m.id === selectedModel) ?? ALL_MODELS.find(m => m.id === DEFAULT_MODEL_ID)
+
+  // Yanıt beklenirken geçen süreyi saniye saniye günceller.
+  useEffect(() => {
+    if (!loading) return
+    setElapsedSeconds(0)
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - askStartRef.current) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [loading])
 
   useEffect(() => {
     if (!modelMenuOpen) return
@@ -186,6 +198,7 @@ export default function Chat() {
     const controller = new AbortController()
     abortRef.current = controller
     const startedAt = Date.now()
+    askStartRef.current = startedAt
 
     setLoading(true)
     try {
@@ -436,7 +449,7 @@ export default function Chat() {
                       )}
                       <button
                         type="button"
-                        className="chat-msg-action-btn"
+                        className={`chat-msg-action-btn ${copiedIndex === i ? 'chat-msg-copied' : ''}`}
                         onClick={() => copyMessage(msg.text, i)}
                         aria-label="Kopyala"
                       >
@@ -444,19 +457,19 @@ export default function Chat() {
                       </button>
                       <button
                         type="button"
-                        className={`chat-msg-action-btn ${msg.feedback === 'like' ? 'chat-msg-action-active' : ''}`}
+                        className={`chat-msg-action-btn chat-msg-like-btn ${msg.feedback === 'like' ? 'chat-msg-action-active' : ''}`}
                         onClick={() => setMessageFeedback(i, 'like')}
                         aria-label="Beğendim"
                       >
-                        <i className="bi bi-hand-thumbs-up"></i>
+                        <i className={`bi ${msg.feedback === 'like' ? 'bi-hand-thumbs-up-fill' : 'bi-hand-thumbs-up'}`}></i>
                       </button>
                       <button
                         type="button"
-                        className={`chat-msg-action-btn ${msg.feedback === 'dislike' ? 'chat-msg-action-active' : ''}`}
+                        className={`chat-msg-action-btn chat-msg-dislike-btn ${msg.feedback === 'dislike' ? 'chat-msg-action-active' : ''}`}
                         onClick={() => setMessageFeedback(i, 'dislike')}
                         aria-label="Beğenmedim"
                       >
-                        <i className="bi bi-hand-thumbs-down"></i>
+                        <i className={`bi ${msg.feedback === 'dislike' ? 'bi-hand-thumbs-down-fill' : 'bi-hand-thumbs-down'}`}></i>
                       </button>
                     </div>
                   )}
@@ -470,7 +483,7 @@ export default function Chat() {
                   <img src={logo} alt="" />
                 </div>
                 <div className="chat-msg-bubble chat-typing">
-                  <span className="chat-typing-text">Düşünüyor</span>
+                  <span className="chat-typing-text">Düşünüyor · {elapsedSeconds} sn</span>
                   <span className="chat-typing-dot"></span>
                   <span className="chat-typing-dot"></span>
                   <span className="chat-typing-dot"></span>
