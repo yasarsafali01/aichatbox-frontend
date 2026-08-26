@@ -136,6 +136,10 @@ export default function Chat() {
     setListening(true)
   }
 
+  const stopGenerating = () => {
+    abortRef.current?.abort()
+  }
+
   const pushUser = (text) => setMessages(prev => [...prev, { role: 'user', text }])
   const pushBot = (text) => setMessages(prev => [...prev, { role: 'bot', text }])
   const pushError = (text) => setMessages(prev => [...prev, { role: 'bot', text, error: true }])
@@ -152,16 +156,19 @@ export default function Chat() {
         body: JSON.stringify({ question: text, model: selectedModel }),
         signal: controller.signal,
       })
-      const raw = await res.text()
-
       if (res.ok) {
-        pushBot(raw)
+        pushBot(await res.text())
         return
       }
 
-      let data = null
-      try { data = JSON.parse(raw) } catch { /* not JSON */ }
-      pushError(data?.error || raw || `Sunucu hatası (HTTP ${res.status}).`)
+      // Backend'in ham hata gövdesi (stack trace, HTML hata sayfası vb.)
+      // kullanıcıya hiç gösterilmez — sadece durum koduna göre sabit,
+      // kullanıcı dostu tek bir mesaj gösterilir.
+      pushError(
+        res.status >= 500
+          ? 'Sunucu şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.'
+          : 'İsteğiniz işlenemedi. Lütfen sorunuzu kontrol edip tekrar deneyin.'
+      )
     } catch (err) {
       if (err.name === 'AbortError') return // sohbet terk edildi, sessizce çık
       pushError('Bağlantı hatası. Backend çalışıyor mu?')
@@ -292,14 +299,25 @@ export default function Chat() {
             <i className={`bi ${listening ? 'bi-mic-fill' : 'bi-mic'}`}></i>
           </button>
         )}
-        <button
-          type="submit"
-          className="chat-send-btn"
-          disabled={loading || !input.trim()}
-          aria-label="Gönder"
-        >
-          <i className="bi bi-arrow-up"></i>
-        </button>
+        {loading ? (
+          <button
+            type="button"
+            className="chat-send-btn chat-stop-btn"
+            onClick={stopGenerating}
+            aria-label="Durdur"
+          >
+            <i className="bi bi-stop-fill"></i>
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="chat-send-btn"
+            disabled={!input.trim()}
+            aria-label="Gönder"
+          >
+            <i className="bi bi-arrow-up"></i>
+          </button>
+        )}
       </div>
     </form>
   )

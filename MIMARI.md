@@ -89,8 +89,9 @@ fetch(ASK_URL, {
 Yanıt işleme mantığı:
 
 - **HTTP 200** → gövde düz metin olarak okunur ve asistan mesajı olarak eklenir (`pushBot`).
-- **HTTP 400/500 vb.** → gövde önce JSON olarak parse edilmeye çalışılır; `error` alanı varsa o metin, yoksa ham gövde, o da yoksa genel `Sunucu hatası (HTTP xxx)` mesajı hata balonu olarak gösterilir (`pushError`).
+- **HTTP 4xx/5xx** → gövde hiç okunmaz/gösterilmez (backend'in ham hata metni, stack trace'i veya nginx'in ürettiği HTML hata sayfası kullanıcıya asla yansıtılmaz). Sadece durum koduna göre sabit, kullanıcı dostu tek bir mesaj gösterilir: `5xx` için "Sunucu şu anda yanıt veremiyor...", diğer hatalar (`4xx`) için "İsteğiniz işlenemedi..." (`pushError`).
 - **Ağ hatası** (fetch reddi — backend'e ulaşılamıyor) → sabit "Bağlantı hatası" mesajı gösterilir.
+- **İstek iptali** (`AbortError` — kullanıcı sohbetten ayrıldı veya durdur butonuna bastı) → sessizce çıkılır, hiçbir mesaj eklenmez.
 
 Bu ayrım önemlidir: sunucudan dönen anlamlı hata mesajları (örn. içerik uygunluk reddi) kullanıcıya olduğu gibi yansıtılırken, gerçek altyapı hataları genel bir mesajla örtülür.
 

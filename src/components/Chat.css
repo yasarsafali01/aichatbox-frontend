@@ -474,6 +474,11 @@
   opacity: 0.35;
 }
 
+.chat-stop-btn {
+  background: #dc3545;
+  font-size: 0.85rem;
+}
+
 .chat-disclaimer {
   display: block;
   text-align: center;
