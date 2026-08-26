@@ -8,9 +8,20 @@ import './Chat.css'
 const ASK_URL = '/api/rag/ask'
 const API_KEY = 'meu-ai-chatbox'
 
+// Sadece Chrome/Edge gibi Chromium tabanlı tarayıcılarda mevcut; yoksa mikrofon
+// butonu hiç gösterilmez (Firefox/Safari'de sessiz şekilde gizlenir).
+const SpeechRecognitionAPI =
+  typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)
+
 const SUGGESTIONS = [
   'Kütüphane çalışma saatleri nedir?',
   'Mezuniyet için gereken şartlar nelerdir?',
+]
+
+const MODELS = [
+  { id: 'qwen2.5:latest', label: 'Qwen 2.5', description: 'Hızlı cevap' },
+  { id: 'qwen3:32b', label: 'Qwen 3', description: 'Orta düzey model' },
+  { id: 'llama3.3:70b', label: 'Llama 3.3', description: 'Daha fazla düşünme' },
 ]
 
 const STORAGE_KEY = 'meu-bilgi-sistemi-conversations'
@@ -43,11 +54,28 @@ export default function Chat() {
   const [conversations, setConversations] = useState(loadConversations)
   const [activeId, setActiveId] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [selectedModel, setSelectedModel] = useState(MODELS[0].id)
+  const [listening, setListening] = useState(false)
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const bottomRef = useRef(null)
   const textareaRef = useRef(null)
   const abortRef = useRef(null)
+  const recognitionRef = useRef(null)
+  const modelMenuRef = useRef(null)
 
   const hasStarted = messages.length > 0
+  const currentModel = MODELS.find(m => m.id === selectedModel) ?? MODELS[0]
+
+  useEffect(() => {
+    if (!modelMenuOpen) return
+    const handleClickOutside = (e) => {
+      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target)) {
+        setModelMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [modelMenuOpen])
 
   // Aktif sohbetin mesajlarını, o sohbete ait kayda yansıt ve localStorage'a yaz.
   useEffect(() => {
@@ -80,6 +108,34 @@ export default function Chat() {
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`
   }, [input])
 
+  const toggleVoiceInput = () => {
+    if (!SpeechRecognitionAPI) return
+
+    if (listening) {
+      recognitionRef.current?.stop()
+      return
+    }
+
+    const recognition = new SpeechRecognitionAPI()
+    recognition.lang = 'tr-TR'
+    recognition.interimResults = true
+    recognition.continuous = false
+
+    recognition.onresult = (e) => {
+      let transcript = ''
+      for (let i = 0; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript
+      }
+      setInput(transcript)
+    }
+    recognition.onerror = () => setListening(false)
+    recognition.onend = () => setListening(false)
+
+    recognitionRef.current = recognition
+    recognition.start()
+    setListening(true)
+  }
+
   const pushUser = (text) => setMessages(prev => [...prev, { role: 'user', text }])
   const pushBot = (text) => setMessages(prev => [...prev, { role: 'bot', text }])
   const pushError = (text) => setMessages(prev => [...prev, { role: 'bot', text, error: true }])
@@ -93,7 +149,7 @@ export default function Chat() {
       const res = await fetch(ASK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
-        body: JSON.stringify({ question: text }),
+        body: JSON.stringify({ question: text, model: selectedModel }),
         signal: controller.signal,
       })
       const raw = await res.text()
@@ -117,6 +173,8 @@ export default function Chat() {
   const sendMessage = (text) => {
     const trimmed = (text ?? input).trim()
     if (!trimmed || loading) return
+
+    recognitionRef.current?.stop()
 
     if (!activeId) {
       const id = makeId()
@@ -144,6 +202,7 @@ export default function Chat() {
 
   const newChat = () => {
     abortRef.current?.abort()
+    recognitionRef.current?.stop()
     setMessages([])
     setInput('')
     setActiveId(null)
@@ -155,6 +214,7 @@ export default function Chat() {
     const conv = conversations.find(c => c.id === id)
     if (!conv) return
     abortRef.current?.abort()
+    recognitionRef.current?.stop()
     setActiveId(id)
     setMessages(conv.messages)
     setInput('')
@@ -187,14 +247,60 @@ export default function Chat() {
         rows={1}
         disabled={loading}
       />
-      <button
-        type="submit"
-        className="chat-send-btn"
-        disabled={loading || !input.trim()}
-        aria-label="Gönder"
-      >
-        <i className="bi bi-arrow-up"></i>
-      </button>
+      <div className="chat-input-toolbar">
+        <div className="chat-model-picker" ref={modelMenuRef}>
+          <button
+            type="button"
+            className="chat-model-trigger"
+            onClick={() => setModelMenuOpen(o => !o)}
+            aria-haspopup="listbox"
+            aria-expanded={modelMenuOpen}
+          >
+            {currentModel.label}
+            <i className={`bi bi-chevron-down chat-model-chevron ${modelMenuOpen ? 'chat-model-chevron-open' : ''}`}></i>
+          </button>
+
+          {modelMenuOpen && (
+            <ul className="chat-model-menu" role="listbox">
+              {MODELS.map((m) => (
+                <li key={m.id} role="presentation">
+                  <button
+                    type="button"
+                    className={`chat-model-option ${m.id === selectedModel ? 'chat-model-option-active' : ''}`}
+                    role="option"
+                    aria-selected={m.id === selectedModel}
+                    onClick={() => { setSelectedModel(m.id); setModelMenuOpen(false) }}
+                  >
+                    <span className="chat-model-option-text">
+                      <span className="chat-model-option-label">{m.label}</span>
+                      <span className="chat-model-option-desc">{m.description}</span>
+                    </span>
+                    {m.id === selectedModel && <i className="bi bi-check-lg"></i>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {SpeechRecognitionAPI && (
+          <button
+            type="button"
+            className={`chat-mic-btn ${listening ? 'chat-mic-btn-active' : ''}`}
+            onClick={toggleVoiceInput}
+            aria-label={listening ? 'Sesli girişi durdur' : 'Sesli giriş başlat'}
+          >
+            <i className={`bi ${listening ? 'bi-mic-fill' : 'bi-mic'}`}></i>
+          </button>
+        )}
+        <button
+          type="submit"
+          className="chat-send-btn"
+          disabled={loading || !input.trim()}
+          aria-label="Gönder"
+        >
+          <i className="bi bi-arrow-up"></i>
+        </button>
+      </div>
     </form>
   )
 
