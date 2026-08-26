@@ -18,11 +18,33 @@ const SUGGESTIONS = [
   'Mezuniyet için gereken şartlar nelerdir?',
 ]
 
-const MODELS = [
-  { id: 'qwen2.5:latest', label: 'Qwen 2.5', description: 'Hızlı cevap' },
-  { id: 'qwen3:32b', label: 'Qwen 3', description: 'Orta düzey model' },
-  { id: 'llama3.3:70b', label: 'Llama 3.3', description: 'Daha fazla düşünme' },
+const MODEL_GROUPS = [
+  {
+    group: 'Hızlı Cevap',
+    models: [
+      { id: 'mistral:7b', label: 'Mistral' },
+      { id: 'qwen2.5:latest', label: 'Qwen 2.5' },
+      { id: 'gemma2:9b', label: 'Gemma 2' },
+    ],
+  },
+  {
+    group: 'Orta Düzey Model',
+    models: [
+      { id: 'gpt-oss:20b', label: 'GPT-OSS' },
+    ],
+  },
+  {
+    group: 'Daha fazla düşünme',
+    models: [
+      { id: 'qwen3:32b', label: 'Qwen 3' },
+      { id: 'deepseek-r1:32b', label: 'DeepSeek R1' },
+      { id: 'llama3.3:70b', label: 'Llama 3.3' },
+    ],
+  },
 ]
+
+const ALL_MODELS = MODEL_GROUPS.flatMap(g => g.models.map(m => ({ ...m, group: g.group })))
+const DEFAULT_MODEL_ID = 'qwen2.5:latest'
 
 const STORAGE_KEY = 'meu-bilgi-sistemi-conversations'
 
@@ -54,7 +76,7 @@ export default function Chat() {
   const [conversations, setConversations] = useState(loadConversations)
   const [activeId, setActiveId] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [selectedModel, setSelectedModel] = useState(MODELS[0].id)
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID)
   const [listening, setListening] = useState(false)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const bottomRef = useRef(null)
@@ -64,7 +86,7 @@ export default function Chat() {
   const modelMenuRef = useRef(null)
 
   const hasStarted = messages.length > 0
-  const currentModel = MODELS.find(m => m.id === selectedModel) ?? MODELS[0]
+  const currentModel = ALL_MODELS.find(m => m.id === selectedModel) ?? ALL_MODELS.find(m => m.id === DEFAULT_MODEL_ID)
 
   useEffect(() => {
     if (!modelMenuOpen) return
@@ -265,31 +287,32 @@ export default function Chat() {
           >
             <span className="chat-model-trigger-text">
               <span className="chat-model-trigger-label">{currentModel.label}</span>
-              <span className="chat-model-trigger-desc">{currentModel.description}</span>
+              <span className="chat-model-trigger-desc">{currentModel.group}</span>
             </span>
             <i className={`bi bi-chevron-down chat-model-chevron ${modelMenuOpen ? 'chat-model-chevron-open' : ''}`}></i>
           </button>
 
           {modelMenuOpen && (
-            <ul className="chat-model-menu" role="listbox">
-              {MODELS.map((m) => (
-                <li key={m.id} role="presentation">
-                  <button
-                    type="button"
-                    className={`chat-model-option ${m.id === selectedModel ? 'chat-model-option-active' : ''}`}
-                    role="option"
-                    aria-selected={m.id === selectedModel}
-                    onClick={() => { setSelectedModel(m.id); setModelMenuOpen(false) }}
-                  >
-                    <span className="chat-model-option-text">
+            <div className="chat-model-menu" role="listbox">
+              {MODEL_GROUPS.map((g) => (
+                <div key={g.group} className="chat-model-group">
+                  <div className="chat-model-group-label">{g.group}</div>
+                  {g.models.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className={`chat-model-option ${m.id === selectedModel ? 'chat-model-option-active' : ''}`}
+                      role="option"
+                      aria-selected={m.id === selectedModel}
+                      onClick={() => { setSelectedModel(m.id); setModelMenuOpen(false) }}
+                    >
                       <span className="chat-model-option-label">{m.label}</span>
-                      <span className="chat-model-option-desc">{m.description}</span>
-                    </span>
-                    {m.id === selectedModel && <i className="bi bi-check-lg"></i>}
-                  </button>
-                </li>
+                      {m.id === selectedModel && <i className="bi bi-check-lg"></i>}
+                    </button>
+                  ))}
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
         {SpeechRecognitionAPI && (

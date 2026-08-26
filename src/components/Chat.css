@@ -376,12 +376,13 @@
   bottom: calc(100% + 8px);
   right: 0;
   min-width: 200px;
+  max-height: 60vh;
+  overflow-y: auto;
   background: #fff;
   border: 1px solid var(--chat-border);
   border-radius: 14px;
   box-shadow: 0 12px 32px rgba(15, 52, 96, 0.16);
   padding: 6px;
-  list-style: none;
   z-index: 20;
   animation: chatModelMenuIn 0.14s ease;
 }
@@ -414,20 +415,24 @@
   background: #eef1fb;
 }
 
-.chat-model-option-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
 .chat-model-option-label {
   font-size: 0.86rem;
   font-weight: 600;
 }
 
-.chat-model-option-desc {
-  font-size: 0.74rem;
+.chat-model-group + .chat-model-group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--chat-border);
+}
+
+.chat-model-group-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--text-muted);
+  padding: 6px 10px 4px;
 }
 
 .chat-model-option i {
