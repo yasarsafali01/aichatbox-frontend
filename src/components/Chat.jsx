@@ -453,7 +453,7 @@ export default function Chat() {
                         onClick={() => copyMessage(msg.text, i)}
                         aria-label="Kopyala"
                       >
-                        <i className={`bi ${copiedIndex === i ? 'bi-check-lg' : 'bi-clipboard'}`}></i>
+                        <i className={`bi ${copiedIndex === i ? 'bi-check-lg' : 'bi-copy'}`}></i>
                       </button>
                       <button
                         type="button"
