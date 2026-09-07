@@ -228,7 +228,7 @@ export default function FileLocator() {
                   <a
                     key={`${r.url}-${i}`}
                     className="locator-result-card"
-                    href={r.url}
+                    href={`https://docs.google.com/viewer?url=${encodeURIComponent(r.url)}&embedded=true`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
