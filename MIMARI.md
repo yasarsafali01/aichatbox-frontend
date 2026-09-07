@@ -18,7 +18,18 @@ Proje, **saf istemci taraflı (client-side) bir Single Page Application (SPA)**'
 
 `X-API-Key` değeri nginx tarafından eklenmiyor — tarayıcı isteği hâlâ bu header ile gönderiyor, nginx sadece olduğu gibi iletiyor (bkz. KURULUM.md → Güvenlik Notu). Proxy'nin tek amacı CORS'u aşmak, anahtarı gizlemek değil.
 
-Build alındığında (`npm run build`) ortaya sadece statik dosyalar (`dist/`) çıkar; bu dosyalar herhangi bir statik web sunucusuyla (nginx, Apache, vb.) servis edilebilir. Bir Node.js runtime'ına ihtiyaç yoktur — sadece nginx'in `/api/rag/` için bir proxy kuralı tanımlaması gerekir (bkz. KURULUM.md adım 6).
+Build alındığında (`npm run build`) ortaya sadece statik dosyalar (`dist/`) çıkar; bu dosyalar herhangi bir statik web sunucusuyla (nginx, Apache, vb.) servis edilebilir. Bir Node.js runtime'ına ihtiyaç yoktur — sadece nginx'in `/api/rag/` ve `/api/locate` için proxy kuralları tanımlaması gerekir (bkz. KURULUM.md adım 6).
+
+## Routing
+
+`react-router-dom` ile iki bağımsız sayfa var, aralarında navigasyon linki yok (bilinçli tercih — iki farklı araç, ayrı ayrı adreslerinden açılıyor):
+
+| Path            | Bileşen        | Amaç                                  |
+|-----------------|-----------------|-----------------------------------------|
+| `/`             | `Chat`          | Soru-cevap sohbet asistanı              |
+| `/dosya-arama`  | `FileLocator`   | Doküman/dosya konumu arama              |
+
+nginx'in mevcut `try_files $uri $uri/ /index.html;` kuralı SPA route'ları için zaten yeterli — `/dosya-arama` gibi bir path'e doğrudan girilse bile `index.html` servis edilir, React Router tarayıcıda doğru sayfayı render eder. Ekstra bir nginx değişikliği gerekmez.
 
 ## Dosya Yapısı
 
@@ -29,18 +40,33 @@ rag-frontend/
 ├── package.json            Bağımlılıklar ve npm script'leri
 └── src/
     ├── main.jsx             Giriş noktası: React root'u oluşturur, global CSS'leri import eder
-    ├── App.jsx               Kök bileşen — sadece <Chat /> render eder
+    ├── App.jsx               Kök bileşen — react-router-dom ile route tanımları (/, /dosya-arama)
     ├── App.css               Global reset + CSS değişkenleri (renk paleti, tema)
     ├── assets/
     │   └── logo.png          Mersin Üniversitesi logosu
     └── components/
-        ├── Chat.jsx           Sohbet state'i, API çağrısı, mesaj akışı UI'ı
+        ├── Chat.jsx           Sohbet state'i, API çağrısı, mesaj akışı UI'ı (route: /)
         ├── Chat.css           Chat.jsx'e özel stiller
-        ├── Sidebar.jsx        Geçmiş sohbet listesi (Chat.jsx'ten prop olarak veri alır)
-        └── Sidebar.css        Sidebar.jsx'e özel stiller
+        ├── Sidebar.jsx        Geçmiş listesi — hem Chat hem FileLocator kullanır (prop'larla parametrik)
+        ├── Sidebar.css        Sidebar.jsx'e özel stiller
+        ├── FileLocator.jsx    Doküman arama state'i, API çağrısı, sonuç listesi UI'ı (route: /dosya-arama)
+        └── FileLocator.css    Sadece sonuç listesine özel stiller (bkz. aşağıda)
 ```
 
-Sayfa geçişi/routing yoktur — tek route, tek `Chat` bileşeni. Geçmiş sohbetler arasında geçiş, routing yerine `Sidebar`'ın `Chat` state'ini prop üzerinden değiştirmesiyle yapılır (bkz. aşağıda "Sohbet Geçmişi").
+`Chat` içindeki geçmiş sohbetler arasında geçiş routing ile değil, `Sidebar`'ın `Chat` state'ini prop üzerinden değiştirmesiyle yapılır (bkz. aşağıda "Sohbet Geçmişi") — routing sadece `Chat` ile `FileLocator` gibi tamamen farklı araçlar arasında kullanılıyor.
+
+## `FileLocator.jsx` İçindeki Akış
+
+**Topbar, boş ekran, arama kutusu ve sidebar `Chat.css`'in/`Sidebar`'ın kendi sınıflarını (`chat-app`, `chat-topbar`, `chat-empty-state`, `chat-input-form`, `chat-send-btn`, `Sidebar` bileşeni vb.) doğrudan kullanır** — ayrı, "benzer ama farklı" bir stil seti tutulmuyor, böylece iki sayfa görsel olarak birebir aynı kalıyor ve Chat.css'te yapılan bir değişiklik otomatik olarak buraya da yansır. `FileLocator.css` sadece Chat'te karşılığı olmayan kısımlara (sonuç kartları listesi) özeldir.
+
+`Sidebar` bileşeni artık parametrik (`newLabel`, `emptyLabel`, `deleteLabel` prop'ları) — `Chat.jsx` varsayılanları ("Yeni Sohbet" vb.) kullanır, `FileLocator.jsx` kendi metinlerini ("Yeni Arama", "Henüz arama geçmişi yok") geçer. Aynı bileşen, iki farklı context'te.
+
+- **İstek:** `POST /api/locate` → nginx proxy → gerçek locate API'si, gövde `{ "question": "<arama metni>" }`, header `X-API-Key`.
+- **Yanıt (200):** JSON dizi — her eleman `{ title, fileName, location, url, distance }`. `distance` (benzerlik skoru, küçük = daha alakalı) arayüzde gösterilmiyor, sadece backend'in sonuçları zaten alakalılığa göre sıralı döndürdüğü varsayılıyor.
+- **Sonuç kartı:** `fileName` (veya yoksa `title`) başlık, `location` (örn. "Paragraf 25") alt bilgi olarak gösterilir; karta tıklamak `url`'i yeni sekmede açar.
+- **Hata durumları:** `Chat.jsx` ile aynı prensip — ham backend gövdesi hiç gösterilmez, sadece durum koduna göre sabit kullanıcı dostu mesaj (`5xx` / diğer) veya "Bağlantı hatası".
+- **Arama geçmişi:** `Chat.jsx`'teki sohbet geçmişiyle aynı desen — `localStorage` anahtarı `meu-dosya-arama-gecmisi`. Sadece **başarılı** (sonuç dönen) aramalar kaydedilir; hatalı/boş aramalar geçmişe girmez. Bir geçmiş kaydına tıklamak backend'e tekrar istek atmaz, o aramanın kayıtlı `results`'ını doğrudan gösterir. "Yeni Arama" ve çöp kutusu ikonuyla silme, `Chat.jsx`'teki `newChat`/`deleteConversation` ile birebir aynı mantıkta.
+- **State:** `query`, `loading`, `searched`, `results`, `error`, `searches` (geçmiş liste), `activeId`, `sidebarOpen`.
 
 ## `Chat.jsx` İçindeki Akış
 

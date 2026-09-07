@@ -93,6 +93,15 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
     }
 
+    # Dosya arama sayfası (/dosya-arama) için aynı mantıkla proxy.
+    # /locate aynı backend servisinde (RAG API ile aynı host:port),
+    # sadece path farklı — bu yüzden 8080 (yukarıdaki /rag/ask ile aynı port).
+    location = /api/locate {
+        proxy_pass http://127.0.0.1:8080/locate;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
 }

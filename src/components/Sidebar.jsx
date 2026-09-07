@@ -1,16 +1,26 @@
 import './Sidebar.css'
 
-export default function Sidebar({ conversations, activeId, onSelect, onNew, onDelete, open }) {
+export default function Sidebar({
+  conversations,
+  activeId,
+  onSelect,
+  onNew,
+  onDelete,
+  open,
+  newLabel = 'Yeni Sohbet',
+  emptyLabel = 'Henüz sohbet geçmişi yok',
+  deleteLabel = 'Sohbeti sil',
+}) {
   return (
     <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
       <button className="sidebar-new-btn" onClick={onNew}>
         <i className="bi bi-plus-lg"></i>
-        Yeni Sohbet
+        {newLabel}
       </button>
 
       <div className="sidebar-list">
         {conversations.length === 0 && (
-          <div className="sidebar-empty">Henüz sohbet geçmişi yok</div>
+          <div className="sidebar-empty">{emptyLabel}</div>
         )}
         {conversations.map((c) => (
           <div key={c.id} className={`sidebar-item ${c.id === activeId ? 'sidebar-item-active' : ''}`}>
@@ -19,7 +29,7 @@ export default function Sidebar({ conversations, activeId, onSelect, onNew, onDe
             </button>
             <button
               className="sidebar-item-delete"
-              aria-label="Sohbeti sil"
+              aria-label={deleteLabel}
               onClick={() => onDelete(c.id)}
             >
               <i className="bi bi-trash"></i>

@@ -1,0 +1,127 @@
+/* Topbar, boş ekran ve arama kutusu Chat.css sınıflarını (chat-app,
+   chat-topbar, chat-empty-state, chat-input-form, chat-send-btn vb.)
+   doğrudan yeniden kullanır — burada sadece sonuç listesine özel
+   stiller var, ana sayfayla görsel olarak birebir aynı kalması için. */
+
+.locator-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.locator-search-row .chat-textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+.locator-results-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.locator-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.locator-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  padding: 16px 4px;
+}
+
+.locator-status-error {
+  color: #dc3545;
+}
+
+.locator-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--chat-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: locatorSpin 0.7s linear infinite;
+}
+
+@keyframes locatorSpin {
+  to { transform: rotate(360deg); }
+}
+
+.locator-result-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid var(--chat-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  animation: locatorCardIn 0.2s ease;
+}
+
+@keyframes locatorCardIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.locator-result-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(15, 52, 96, 0.1);
+  transform: translateY(-1px);
+}
+
+.locator-result-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #f1f2f6;
+  color: var(--navy-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.locator-result-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.locator-result-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #212529;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.locator-result-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.locator-result-arrow {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+  .locator-results-wrap {
+    padding: 18px 14px 30px;
+  }
+}
