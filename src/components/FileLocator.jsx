@@ -45,6 +45,7 @@ export default function FileLocator() {
   const [searches, setSearches] = useState(loadSearches)
   const [activeId, setActiveId] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(null)
   const abortRef = useRef(null)
 
   const search = async (text) => {
@@ -60,6 +61,7 @@ export default function FileLocator() {
     setError(null)
     setActiveId(null)
     setSidebarOpen(false)
+    setSelectedIndex(null)
 
     try {
       const res = await fetch(LOCATE_URL, {
@@ -109,6 +111,7 @@ export default function FileLocator() {
     setError(null)
     setActiveId(null)
     setSidebarOpen(false)
+    setSelectedIndex(null)
   }
 
   const selectSearch = (id) => {
@@ -121,6 +124,7 @@ export default function FileLocator() {
     setSearched(true)
     setError(null)
     setSidebarOpen(false)
+    setSelectedIndex(null)
   }
 
   const deleteSearch = (id) => {
@@ -208,40 +212,78 @@ export default function FileLocator() {
             <div className="locator-results-wrap">
               {searchForm}
 
-              <div className="locator-results">
-                {loading && (
-                  <div className="locator-status">
-                    <span className="locator-spinner"></span>
-                    Aranıyor…
+              <div className={`locator-split ${selectedIndex !== null ? 'locator-split-active' : ''}`}>
+                <div className="locator-results">
+                  {loading && (
+                    <div className="locator-status">
+                      <span className="locator-spinner"></span>
+                      Aranıyor…
+                    </div>
+                  )}
+
+                  {!loading && error && (
+                    <div className="locator-status locator-status-error">{error}</div>
+                  )}
+
+                  {!loading && !error && results.length === 0 && (
+                    <div className="locator-status">Sonuç bulunamadı.</div>
+                  )}
+
+                  {!loading && !error && results.map((r, i) => (
+                    <button
+                      key={`${r.url}-${i}`}
+                      type="button"
+                      className={`locator-result-card ${selectedIndex === i ? 'locator-result-card-active' : ''}`}
+                      onClick={() => setSelectedIndex(i)}
+                    >
+                      <div className="locator-result-icon">
+                        <i className="bi bi-file-earmark-text"></i>
+                      </div>
+                      <div className="locator-result-text">
+                        <div className="locator-result-name">{r.fileName || r.title}</div>
+                        {r.location && <div className="locator-result-meta">{r.location}</div>}
+                      </div>
+                      <i className="bi bi-chevron-right locator-result-arrow"></i>
+                    </button>
+                  ))}
+                </div>
+
+                {selectedIndex !== null && results[selectedIndex] && (
+                  <div className="locator-content-panel">
+                    <div className="locator-content-header">
+                      <div className="locator-content-heading">
+                        <div className="locator-content-title">
+                          {results[selectedIndex].fileName || results[selectedIndex].title}
+                        </div>
+                        {results[selectedIndex].location && (
+                          <div className="locator-content-meta">{results[selectedIndex].location}</div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="locator-content-close"
+                        onClick={() => setSelectedIndex(null)}
+                        aria-label="Kapat"
+                      >
+                        <i className="bi bi-x-lg"></i>
+                      </button>
+                    </div>
+
+                    <div className="locator-content-text">
+                      {results[selectedIndex].text || 'Bu sonuç için içerik önizlemesi bulunmuyor.'}
+                    </div>
+
+                    <a
+                      className="locator-content-open-btn"
+                      href={`https://docs.google.com/viewer?url=${encodeURIComponent(results[selectedIndex].url)}&embedded=true`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <i className="bi bi-box-arrow-up-right"></i>
+                      Dosyayı Görüntüle
+                    </a>
                   </div>
                 )}
-
-                {!loading && error && (
-                  <div className="locator-status locator-status-error">{error}</div>
-                )}
-
-                {!loading && !error && results.length === 0 && (
-                  <div className="locator-status">Sonuç bulunamadı.</div>
-                )}
-
-                {!loading && !error && results.map((r, i) => (
-                  <a
-                    key={`${r.url}-${i}`}
-                    className="locator-result-card"
-                    href={`https://docs.google.com/viewer?url=${encodeURIComponent(r.url)}&embedded=true`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <div className="locator-result-icon">
-                      <i className="bi bi-file-earmark-text"></i>
-                    </div>
-                    <div className="locator-result-text">
-                      <div className="locator-result-name">{r.fileName || r.title}</div>
-                      {r.location && <div className="locator-result-meta">{r.location}</div>}
-                    </div>
-                    <i className="bi bi-box-arrow-up-right locator-result-arrow"></i>
-                  </a>
-                ))}
               </div>
             </div>
           )}
