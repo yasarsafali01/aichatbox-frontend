@@ -31,6 +31,15 @@ const saveSearches = (list) => {
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 const makeTitle = (text) => (text.length > 42 ? `${text.slice(0, 42).trimEnd()}…` : text)
 
+// PDF'ler tarayıcının kendi görüntüleyicisinde doğrudan açılır. .doc/.docx
+// gibi Office dosyaları için Google Docs Viewer artık dış URL'lerde
+// güvenilir çalışmıyor (indirmeye düşüyor) — Microsoft'un resmi Office
+// Online Viewer'ı bu dosya türleri için daha güvenilir.
+const getViewerUrl = (url) => {
+  if (/\.pdf(\?.*)?$/i.test(url)) return url
+  return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`
+}
+
 export default function FileLocator() {
   useEffect(() => {
     document.title = 'Mersin Üniversitesi — Doküman Arama'
@@ -275,7 +284,7 @@ export default function FileLocator() {
 
                     <a
                       className="locator-content-open-btn"
-                      href={`https://docs.google.com/viewer?url=${encodeURIComponent(results[selectedIndex].url)}&embedded=true`}
+                      href={getViewerUrl(results[selectedIndex].url)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
